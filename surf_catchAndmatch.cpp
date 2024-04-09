@@ -150,7 +150,8 @@ void SLAM::surf_fearures()
 void SLAM::Matcher_bruteForce()
 {
     std::vector<cv::DMatch> matches;                      // 定义存放匹配结果的变量
-    cv::BFMatcher matcher(cv::NORM_HAMMING);              // 定义特征点匹配的类，使用汉明距离
+    //cv::BFMatcher matcher(cv::NORM_HAMMING);              // 定义特征点匹配的类，使用汉明距离
+    cv::BFMatcher matcher(cv::NORM_L2);
     matcher.match(descriptions1, descriptions2, matches); // 进行特征点匹配
 
     std::ostringstream ss;
@@ -191,7 +192,7 @@ void SLAM::Matcher_bruteForce()
     }
 
     std::cout << "good_match =" << good_matches.size() << std::endl; // 剩余特征点数目
-    std::cout << "Knn_good_match:" << good_matches.size() << std::endl;
+    std::cout << "Knn_good_match:" << knn_good_matches.size() << std::endl;
 
     std::vector<int> left_keypoints(good_matches.size()), right_keypoints(good_matches.size());
     std::vector<float> matchDepth(good_matches.size());
@@ -199,7 +200,7 @@ void SLAM::Matcher_bruteForce()
     {
         left_keypoints[i] = good_matches[i].queryIdx;
         right_keypoints[i] = good_matches[i].trainIdx;
-        matchDepth[i] = good_matches[i].distance;
+        //matchDepth[i] = good_matches[i].distance; //汉明距离，越小越好
     }
 
     //std::vector<std::pair<int, int>> left_matches, right_matches;
@@ -209,6 +210,7 @@ void SLAM::Matcher_bruteForce()
     {
         left_matches.emplace_back(keypoints1[left_keypoints[i]].pt.x, keypoints1[left_keypoints[i]].pt.y);
         right_matches.emplace_back(keypoints2[right_keypoints[i]].pt.x, keypoints2[right_keypoints[i]].pt.y);
+        matchDepth[i] = keypoints2[right_keypoints[i]].pt.x - keypoints1[left_keypoints[i]].pt.x;
     }
     sint32 height = height_;
     sint32 width = width_;
@@ -223,6 +225,7 @@ void SLAM::Matcher_bruteForce()
     for (sint32 k = 0; k < good_matches.size(); k++)
     {
         disparity[left_matches[k].first * width + left_matches[k].second] = matchDepth[k];
+        //std::cout << matchDepth[k] << std::endl;
     }
     //// KNN 匹配
     //std::vector<std::vector<cv::DMatch>> knn_matches;
@@ -241,13 +244,13 @@ void SLAM::Matcher_bruteForce()
     // match_two_image(img_1, img_2, keypoints_1, keypoints_2, descriptors_1, descriptors_2);
 
     // 绘制匹配结果
-    cv::Mat imgMatches, imgHammingMatch;
+    cv::Mat imgMatches, imgKnnMatch;
     drawMatches(gray_left_, keypoints1, gray_left_, keypoints2, matches, imgMatches);
-    drawMatches(gray_right_, keypoints1, gray_right_, keypoints2, good_matches, imgHammingMatch);
+    drawMatches(gray_right_, keypoints1, gray_right_, keypoints2, knn_good_matches, imgKnnMatch);
 
     // 显示结果
     cv::imwrite("D:\\dealpic\\orb_outimg.png", imgMatches);              // 未筛选结果
-    cv::imwrite("D:\\dealpic\\orb_Hamming_outimg.png", imgHammingMatch); // 最小汉明距离筛选
+    cv::imwrite("D:\\dealpic\\orb_Hamming_outimg.png", imgKnnMatch); // 最小汉明距离筛选
 };
 
 // void Matcher_bruteForce(cv::Mat img1, cv::Mat img2, std::vector<cv::KeyPoint> &keypoints1, std::vector<cv::KeyPoint> &keypoints2,
